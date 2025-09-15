@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic AI in Clinical Decision Support</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F0F4F8;
+            color: #073B4C;
+        }
+        .tab-btn.active {
+            color: #073B4C;
+            background-color: #E8F6F8;
+            border-bottom: 2px solid #118AB2;
+        }
+        .tech-tab-btn {
+            background-color: #F0F4F8;
+            border-bottom: 2px solid transparent;
+            font-weight: 600;
+            padding: 0.75rem 1rem;
+            transition: all 0.2s ease-in-out;
+            white-space: nowrap;
+        }
+        .tech-tab-btn.active {
+            background-color: #E8F6F8;
+            border-bottom: 2px solid #118AB2;
+            color: #073B4C;
+        }
+        .tech-tab-btn:hover:not(.active) {
+            background-color: #e2e8f0;
+            color: #118AB2;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .flow-line {
+            position: absolute;
+            height: 2px;
+            background: #FF6B6B;
+            z-index: 10;
+        }
+        .timeline-item {
+            position: relative;
+            padding: 20px 0;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            width: 2px;
+            height: 100%;
+            background: #118AB2;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+        .timeline-dot {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            background: #118AB2;
+            border: 4px solid #fff;
+            border-radius: 50%;
+            z-index: 2;
+        }
+        .timeline-content {
+            width: 45%;
+            padding: 10px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .timeline-item:nth-child(odd) .timeline-content {
+            left: 0;
+        }
+        .timeline-item:nth-child(even) .timeline-content {
+            right: 0;
+        }
+        .timeline-content-left {
+            text-align: right;
+            padding-right: 2rem;
+        }
+        .timeline-content-right {
+            text-align: left;
+            padding-left: 2rem;
+        }
+        .vector-space {
+            position: relative;
+            width: 100%;
+            height: 400px;
+        }
+        .query-vector {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            background-color: #118AB2;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 20;
+        }
+        .doc-vector {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: 0 0;
+            width: 0;
+            height: 0;
+        }
+        .doc-vector span {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.75rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 2px;
+            background-color: #118AB2;
+            transform-origin: 0 0;
+            width: 100px;
+        }
+        .tool-flow-box {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .flow-arrow {
+            text-align: center;
+            margin: 0.5rem 0;
+        }
+        .flow-arrow .arrow-icon {
+            font-size: 2.5rem;
+            color: #FFD166;
+            animation: pulse-arrow 1.5s infinite ease-in-out;
+        }
+        @keyframes pulse-arrow {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .diffusion-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <header class="bg-[#073B4C] text-white text-center py-12 px-4">
+        <h1 class="text-4xl md:text-5xl font-bold mb-2">Agentic AI in Clinical Decision Support</h1>
+        <p class="text-lg md:text-xl max-w-3xl mx-auto text-gray-300">Towards Smarter, Proactive Healthcare</p>
+    </header>
+
+    <nav class="bg-gray-100 shadow-md sticky top-0 z-50">
+        <div role="tablist" class="container mx-auto flex flex-wrap justify-center font-semibold text-sm sm:text-base">
+            <button role="tab" aria-controls="tab-home" aria-selected="true" class="tab-btn active px-3 py-3 sm:px-4 hover:bg-gray-200 transition-colors duration-200 focus:outline-none">Overview</button>
+            <button role="tab" aria-controls="tab-history" aria-selected="false" class="tab-btn px-3 py-3 sm:px-4 hover:bg-gray-200 transition-colors duration-200 focus:outline-none">Historical Context</button>
+            <button role="tab" aria-controls="tab-tech" aria-selected="false" class="tab-btn px-3 py-3 sm:px-4 hover:bg-gray-200 transition-colors duration-200 focus:outline-none">Technical Foundations</button>
+            <button role="tab" aria-controls="tab-agentic" aria-selected="false" class="tab-btn px-3 py-3 sm:px-4 hover:bg-gray-200 transition-colors duration-200 focus:outline-none">Agentic Workflow</button>
+            <button role="tab" aria-controls="tab-usecases" aria-selected="false" class="tab-btn px-3 py-3 sm:px-4 hover:bg-gray-200 transition-colors duration-200 focus:outline-none">Use Cases & Benefits</button>
+            <button role="tab" aria-controls="tab-trends" aria-selected="false" class="tab-btn px-3 py-3 sm:px-4 hover:bg-gray-200 transition-colors duration-200 focus:outline-none">Data & Market Trends</button>
+            <button role="tab" aria-controls="tab-challenges" aria-selected="false" class="tab-btn px-3 py-3 sm:px-4 hover:bg-gray-200 transition-colors duration-200 focus:outline-none">Ethical & Future Outlook</button>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-4 md:p-8">
+
+        <div id="tab-home" role="tabpanel">
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8 text-center">
+                <h2 class="text-3xl font-bold text-[#118AB2] mb-4">The Next Frontier in Clinical Support</h2>
+                <p class="max-w-4xl mx-auto text-lg leading-relaxed mb-6">Agentic AI is an advanced class of artificial intelligence that goes beyond simple analysis to perform tasks autonomously, plan, and reason. Unlike traditional AI that responds to a single command, an Agentic AI system can set goals and use a variety of tools to achieve complex objectives. In healthcare, this means a shift from reactive data processing to proactive, goal-oriented clinical assistance.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <span class="text-4xl">🎯</span>
+                        <h4 class="font-bold mt-2">Goal-Oriented</h4>
+                        <p class="text-sm">Works towards a high-level objective (e.g., "reduce time to diagnosis").</p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <span class="text-4xl">🛠️</span>
+                        <h4 class="font-bold mt-2">Tool-Using</h4>
+                        <p class="text-sm">Can access and use different systems like EHRs and medical databases.</p>
+                    </div>
+                    <div class="bg-yellow-50 p-4 rounded-lg">
+                        <span class="text-4xl">🧠</span>
+                        <h4 class="font-bold mt-2">Reasoning & Planning</h4>
+                        <p class="text-sm">Breaks down complex problems into logical, sequential steps.</p>
+                    </div>
+                    <div class="bg-red-50 p-4 rounded-lg">
+                        <span class="text-4xl">🔄</span>
+                        <h4 class="font-bold mt-2">Autonomous</h4>
+                        <p class="text-sm">Executes plans and adapts with limited human intervention.</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h3 class="text-2xl font-bold text-[#118AB2] text-center mb-4">The Foundation: From Data to Decision</h3>
+                <p class="max-w-3xl mx-auto text-center mb-6">AI in healthcare leverages large volumes of data to provide insights. The following chart shows the breakdown of where AI is most commonly applied today, with Natural Language Processing (NLP) and predictive Machine Learning models leading the way.</p>
+                <div class="chart-container mx-auto h-72 md:h-80">
+                    <canvas id="aiTypesChart"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <div id="tab-history" role="tabpanel" class="hidden">
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-3xl font-bold text-[#118AB2] text-center mb-4">A Brief History of AI in Clinical Support</h2>
+                <p class="max-w-4xl mx-auto text-lg leading-relaxed text-center mb-6">The evolution of AI in medicine is a story of technological convergence. As processing power increased, storage became cheaper, and more advanced algorithms were developed, AI transformed from a rigid rule-based system into a dynamic, data-driven partner for clinicians.</p>
+                <div class="relative max-w-4xl mx-auto py-8">
+                    <div class="timeline-item relative flex justify-between items-center w-full mb-8">
+                        <div class="timeline-content timeline-content-left p-4 rounded-lg bg-gray-100 shadow-sm w-[45%]">
+                            <h4 class="font-bold text-xl mb-1 text-[#073B4C]">1970s: Rule-Based Systems</h4>
+                            <p class="text-sm text-gray-700">Early expert systems like **MYCIN** used hard-coded `if-then` rules to aid in antibiotic selection. This marked the beginning of AI in medicine, but these systems were rigid and couldn't adapt to new knowledge.</p>
+                        </div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content w-[45%]"></div>
+                    </div>
+
+                    <div class="timeline-item relative flex justify-between items-center w-full mb-8">
+                        <div class="timeline-content w-[45%]"></div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content timeline-content-right p-4 rounded-lg bg-gray-100 shadow-sm w-[45%]">
+                            <h4 class="font-bold text-xl mb-1 text-[#073B4C]">2000s: The Digital Foundation</h4>
+                            <p class="text-sm text-gray-700">The widespread adoption of **Electronic Health Records (EHRs)** provided the massive datasets needed to train more complex models. Concurrently, the advent of powerful **GPUs** enabled the parallel processing required to handle this data, laying the groundwork for a new era of machine learning.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item relative flex justify-between items-center w-full mb-8">
+                        <div class="timeline-content timeline-content-left p-4 rounded-lg bg-gray-100 shadow-sm w-[45%]">
+                            <h4 class="font-bold text-xl mb-1 text-[#073B4C]">2010s: Deep Learning Breakthroughs</h4>
+                            <p class="text-sm text-gray-700">Advancements in **deep learning algorithms** unlocked new capabilities. For instance, **Google Health** developed an AI model that could detect diabetic retinopathy from retinal scans with expert-level accuracy. This proved that AI could analyze complex medical images with a precision rivaling human specialists.</p>
+                        </div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content w-[45%]"></div>
+                    </div>
+
+                    <div class="timeline-item relative flex justify-between items-center w-full mb-8">
+                        <div class="timeline-content w-[45%]"></div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content timeline-content-right p-4 rounded-lg bg-gray-100 shadow-sm w-[45%]">
+                            <h4 class="font-bold text-xl mb-1 text-[#073B4C]">2017: The Transformer Architecture</h4>
+                            <p class="text-sm text-gray-700">The publication of the paper "Attention Is All You Need" introduced the **Transformer architecture**. This new model's ability to process and understand sequential data by using self-attention mechanisms revolutionized Natural Language Processing (NLP) and is the foundational technology for modern LLMs.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item relative flex justify-between items-center w-full mb-8">
+                        <div class="timeline-content timeline-content-left p-4 rounded-lg bg-gray-100 shadow-sm w-[45%]">
+                            <h4 class="font-bold text-xl mb-1 text-[#073B4C]">2022: Proactive Patient Monitoring</h4>
+                            <p class="text-sm text-gray-700">The combination of advanced algorithms and real-time data enabled a paradigm shift from reactive to proactive care. Johns Hopkins University's **TREWS** (Targeted Real-time Early Warning System) was deployed to predict sepsis, successfully catching 82% of cases and being associated with a **~20% lower mortality rate**.</p>
+                        </div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content w-[45%]"></div>
+                    </div>
+
+                     <div class="timeline-item relative flex justify-between items-center w-full mb-8">
+                        <div class="timeline-content w-[45%]"></div>
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content timeline-content-right p-4 rounded-lg bg-gray-100 shadow-sm w-[45%]">
+                            <h4 class="font-bold text-xl mb-1 text-[#073B4C]">2024: Agentic Systems Emerge</h4>
+                            <p class="text-sm text-gray-700">Today, Agentic AI, powered by sophisticated Large Language Models (LLMs), is the new frontier. These systems can reason, plan, and execute a series of actions autonomously, marking the shift from static analysis to dynamic, proactive assistance in a clinician's workflow.</p>
+                        </div>
+                    </div>
+                    
+                </div>
+            </section>
+        </div>
+
+        <div id="tab-tech" role="tabpanel" class="hidden">
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-3xl font-bold text-[#118AB2] text-center mb-4">Under the Hood: The Technical Foundations</h2>
+                <p class="max-w-4xl mx-auto text-lg leading-relaxed text-center mb-6">Agentic AI relies on several key technical concepts to function. These include how information is processed, the strategies used to access knowledge, and the ability to interact with external tools.</p>
+                <nav class="flex flex-wrap justify-center border-b border-gray-200 mb-6">
+                    <button class="tech-tab-btn active px-4 py-2 text-sm sm:text-base hover:text-[#06D6A0] transition-colors duration-200 focus:outline-none" aria-controls="tech-tab-1">LLM Prompts & Tokenization</button>
+                    <button class="tech-tab-btn px-4 py-2 text-sm sm:text-base hover:text-[#06D6A0] transition-colors duration-200 focus:outline-none" aria-controls="tech-tab-2">Embeddings & RAG</button>
+                    <button class="tech-tab-btn px-4 py-2 text-sm sm:text-base hover:text-[#06D6A0] transition-colors duration-200 focus:outline-none" aria-controls="tech-tab-3">Tool Calling</button>
+                    <button class="tech-tab-btn px-4 py-2 text-sm sm:text-base hover:text-[#06D6A0] transition-colors duration-200 focus:outline-none" aria-controls="tech-tab-4">Diffusion & Multimodal Generation</button>
+                </nav>
+
+                <div id="tech-tab-1" class="tech-tab-content">
+                    <h3 class="text-2xl font-bold text-[#073B4C] mb-4">LLM Prompts & Tokenization</h3>
+                    <p class="text-md leading-relaxed mb-4">The **prompt** is the instruction given to a Large Language Model (LLM) that guides its behavior. In Agentic AI, prompts are structured to define a specific goal, the tools at the agent's disposal, and a chain of reasoning to follow. This is crucial for giving the agent autonomy and purpose.</p>
+                    <p class="text-md leading-relaxed mb-4">Before an LLM can understand the prompt, it must be broken down into **tokens**. Tokens are the fundamental units of text the model can process, which can be a word, part of a word, or punctuation. The LLM's understanding is based on the relationships between these tokens. A complex prompt can contain many tokens, requiring a large context window for the model to effectively reason and respond.</p>
+                    <div class="my-8 max-w-2xl mx-auto">
+                        <div class="text-center font-bold text-lg mb-4 text-[#FFD166]">
+                            The Prompt-to-Vector Journey
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="bg-white rounded-lg shadow-md p-4 mb-4 border border-gray-200 w-full text-center">
+                                <span class="font-bold text-[#118AB2]">Raw Text Prompt</span>
+                                <div class="mt-2 text-sm text-gray-700 italic">"Analyze this patient's vitals."</div>
+                            </div>
+                            <div class="text-3xl text-[#FF6B6B] my-2">⬇️</div>
+                            <div class="bg-gray-100 rounded-lg shadow-inner p-4 mb-4 w-full">
+                                <span class="font-bold text-[#073B4C] block mb-2 text-center">Tokenization</span>
+                                <div class="flex flex-wrap justify-center items-center gap-1.5 text-sm">
+                                    <span class="bg-green-200 text-green-800 rounded-full px-2 py-0.5">"Analyze"</span>
+                                    <span class="bg-green-200 text-green-800 rounded-full px-2 py-0.5">"this"</span>
+                                    <span class="bg-green-200 text-green-800 rounded-full px-2 py-0.5">"patient's"</span>
+                                    <span class="bg-green-200 text-green-800 rounded-full px-2 py-0.5">"vitals"</span>
+                                    <span class="bg-green-200 text-green-800 rounded-full px-2 py-0.5">"."</span>
+                                </div>
+                            </div>
+                            <div class="text-3xl text-[#FF6B6B] my-2">⬇️</div>
+                            <div class="bg-white rounded-lg shadow-md p-4 mb-4 border border-gray-200 w-full text-center">
+                                <span class="font-bold text-[#073B4C]">Vector Embeddings</span>
+                                <div class="mt-2 text-sm text-gray-700 italic">Numerical representations of meaning.</div>
+                                <div class="flex flex-col items-center mt-2">
+                                    <div class="w-full h-8 bg-blue-100 border border-blue-400 rounded-full flex justify-center items-center">
+                                        <div class="text-xs text-blue-800">Vector A: [0.1, 0.4, -0.2, 0.8, ...]</div>
+                                    </div>
+                                    <div class="w-full h-8 bg-blue-100 border border-blue-400 rounded-full flex justify-center items-center mt-1">
+                                        <div class="text-xs text-blue-800">Vector B: [0.2, 0.5, -0.1, 0.7, ...]</div>
+                                    </div>
+                                    <div class="w-full h-8 bg-blue-100 border border-blue-400 rounded-full flex justify-center items-center mt-1">
+                                        <div class="text-xs text-blue-800">...</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-3xl text-[#FF6B6B] my-2">⬇️</div>
+                            <div class="bg-white rounded-lg shadow-md p-4 border border-gray-200 w-full text-center">
+                                <span class="font-bold text-[#06D6A0]">LLM Processing & Action</span>
+                                <div class="mt-2 text-sm text-gray-700 italic">The model understands the intent and begins to reason.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tech-tab-2" class="tech-tab-content hidden">
+                    <h3 class="text-2xl font-bold text-[#073B4C] mb-4">Embeddings & Retrieval-Augmented Generation (RAG)</h3>
+                    <p class="text-md leading-relaxed mb-4">An **embedding** is a vector (a list of numbers) that represents the semantic meaning of text. Words or phrases with similar meanings are located closer to each other in a multi-dimensional space. This allows the AI to understand concepts and find relevant information based on meaning, not just keyword matches.</p>
+                    <p class="text-md leading-relaxed mb-4">**Retrieval-Augmented Generation (RAG)** is a powerful technique that combines the LLM's generative ability with an external knowledge base. When a user asks a question, the agent first uses embeddings to search a database of medical literature or patient records for relevant information. It then includes this retrieved information in the prompt to the LLM. This process ensures the agent's response is grounded in accurate, up-to-date data, preventing "hallucinations" and improving reliability.</p>
+                    
+                    <h4 class="text-xl font-bold text-[#073B4C] mb-4 mt-6">How Cosine Similarity Finds Relevance</h4>
+                    <p class="text-md leading-relaxed mb-4">To find the most relevant documents, the agent measures the **cosine similarity** between the user's query vector and the document vectors in the knowledge base. This metric measures the cosine of the angle between two vectors. A smaller angle (and a cosine value closer to 1) means the vectors are pointing in a very similar direction, indicating high semantic relevance.</p>
+                    <div class="my-8 max-w-2xl mx-auto p-4 bg-gray-50 rounded-lg shadow-inner flex flex-col items-center justify-center">
+                        <div class="vector-space relative w-full h-[400px] flex items-center justify-center">
+                             <!-- Central Query Vector -->
+                            <div class="query-vector">Query</div>
+                            <!-- Document Vectors with varying angles -->
+                            <!-- High Similarity -->
+                            <div class="doc-vector" style="transform: rotate(10deg); width: 150px;">
+                                <div class="line" style="background-color: #06D6A0;"></div>
+                                <span style="background-color: #06D6A0; transform: translate(140px, -10px);">Doc A</span>
+                            </div>
+                            <div class="doc-vector" style="transform: rotate(-15deg); width: 150px;">
+                                <div class="line" style="background-color: #06D6A0;"></div>
+                                <span style="background-color: #06D6A0; transform: translate(140px, -10px);">Doc B</span>
+                            </div>
+                            <!-- Medium Similarity -->
+                            <div class="doc-vector" style="transform: rotate(60deg); width: 150px;">
+                                <div class="line" style="background-color: #FFD166;"></div>
+                                <span style="background-color: #FFD166; transform: translate(140px, -10px);">Doc C</span>
+                            </div>
+                            <div class="doc-vector" style="transform: rotate(-70deg); width: 150px;">
+                                <div class="line" style="background-color: #FFD166;"></div>
+                                <span style="background-color: #FFD166; transform: translate(140px, -10px);">Doc D</span>
+                            </div>
+                            <!-- Low Similarity -->
+                            <div class="doc-vector" style="transform: rotate(135deg); width: 150px;">
+                                <div class="line" style="background-color: #FF6B6B;"></div>
+                                <span style="background-color: #FF6B6B; transform: translate(140px, -10px);">Doc E</span>
+                            </div>
+                        </div>
+                        <div class="mt-8 text-center text-sm w-full">
+                            <p class="font-bold text-[#06D6A0] mb-1">High Similarity (Small Angle)</p>
+                            <p class="text-gray-700 mb-2">Vectors for Documents A and B are closely aligned with the Query Vector. These are highly relevant and will be retrieved for the LLM.</p>
+                            <p class="font-bold text-[#FFD166] mb-1">Medium Similarity (Medium Angle)</p>
+                            <p class="text-gray-700 mb-2">Vectors for Documents C and D have a larger angle, indicating less relevance. They may be considered, but are not as central to the query.</p>
+                            <p class="font-bold text-[#FF6B6B] mb-1">Low Similarity (Large Angle)</p>
+                            <p class="text-gray-700">The vector for Document E is pointing in a very different direction, indicating a low similarity score and a low likelihood of being retrieved.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tech-tab-3" class="tech-tab-content hidden">
+                    <h3 class="text-2xl font-bold text-[#073B4C] mb-4">Tool Calling</h3>
+                    <p class="text-md leading-relaxed mb-4">The ability for an LLM to call and use external **tools** is a defining feature of Agentic AI. Tools can be anything from a simple function to a complex API for an EHR. The agent's prompt can explicitly define which tools are available and under what circumstances they should be used.</p>
+                    <p class="text-md leading-relaxed mb-4">For example, a prompt might instruct an agent to check a patient's most recent blood pressure reading from an EHR. The agent would parse this instruction, determine the need to use a `get_vitals()` tool, and then execute that tool to retrieve the information. This capability allows the agent to move from a purely conversational role to an active participant in a workflow, bridging the gap between reasoning and action.</p>
+
+                    <div class="my-8 max-w-2xl mx-auto">
+                        <div class="text-center font-bold text-lg mb-4 text-[#FFD166]">
+                            The Tool-Calling Workflow
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <div class="tool-flow-box w-full">
+                                <div class="text-xl font-bold text-[#118AB2] mb-2">User Query</div>
+                                <p class="text-sm text-gray-700 italic">"What are the latest vitals for Patient ID 123?"</p>
+                            </div>
+                            <div class="flow-arrow"><span class="arrow-icon">⬇️</span></div>
+                            <div class="tool-flow-box w-full">
+                                <div class="text-xl font-bold text-[#06D6A0] mb-2">LLM Processes & Reasons</div>
+                                <p class="text-sm text-gray-700">Identifies the intent to retrieve data and looks for a relevant tool. Finds `get_patient_data(id)`.</p>
+                            </div>
+                            <div class="flow-arrow"><span class="arrow-icon">⬇️</span></div>
+                            <div class="tool-flow-box w-full">
+                                <div class="text-xl font-bold text-[#FF6B6B] mb-2">Tool Call</div>
+                                <p class="text-sm text-gray-700">LLM triggers the tool with the patient ID as a parameter: `get_patient_data("123")`</p>
+                            </div>
+                            <div class="flow-arrow"><span class="arrow-icon">⬇️</span></div>
+                            <div class="tool-flow-box w-full">
+                                <div class="text-xl font-bold text-[#FFD166] mb-2">External System Response</div>
+                                <p class="text-sm text-gray-700">The EHR system returns the raw data: `{"bp": "120/80", "temp": "98.6"}`</p>
+                            </div>
+                            <div class="flow-arrow"><span class="arrow-icon">⬇️</span></div>
+                            <div class="tool-flow-box w-full">
+                                <div class="text-xl font-bold text-[#073B4C] mb-2">Final Output</div>
+                                <p class="text-sm text-gray-700">LLM synthesizes the data into a clear summary: "Patient 123's blood pressure is 120/80 and temperature is 98.6°F."</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tech-tab-4" class="tech-tab-content hidden">
+                    <h3 class="text-2xl font-bold text-[#073B4C] mb-4">Diffusion & Multimodal Generation</h3>
+                    <p class="text-md leading-relaxed mb-4">Beyond text and data, Agentic AI can also work with images, a process powered by **diffusion models**. These models are a class of generative AI that creates images by iteratively removing noise from a completely random starting image. This is particularly valuable in healthcare for generating realistic synthetic data for training purposes or for creating clear, compelling visualizations.</p>
+                    <p class="text-md leading-relaxed mb-4">Imagine a radiologist asking for a visualization of a tumor's growth over time. A diffusion model could be used to generate a series of images showing this progression. Or, it can create synthetic medical images to help train new diagnostic models without compromising patient privacy. This capability allows the AI to move beyond a text-based workflow into a truly multimodal one. </p>
+                    <div class="my-8 max-w-2xl mx-auto flex flex-col md:flex-row items-center justify-between">
+                        <div class="diffusion-step text-center mb-6 md:mb-0">
+                            <div class="text-4xl">🌫️</div>
+                            <h4 class="font-bold text-sm mt-2">Start with Noise</h4>
+                            <p class="text-xs text-gray-600 mt-1">A random, noisy image is the starting point.</p>
+                        </div>
+                        <div class="text-4xl text-[#118AB2] mx-4 rotate-90 md:rotate-0">➡️</div>
+                        <div class="diffusion-step text-center mb-6 md:mb-0">
+                            <div class="text-4xl">🔍</div>
+                            <h4 class="font-bold text-sm mt-2">Denoising Iterations</h4>
+                            <p class="text-xs text-gray-600 mt-1">The model iteratively removes noise, guided by a prompt or condition.</p>
+                        </div>
+                        <div class="text-4xl text-[#118AB2] mx-4 rotate-90 md:rotate-0">➡️</div>
+                        <div class="diffusion-step text-center">
+                            <div class="text-4xl">✨</div>
+                            <h4 class="font-bold text-sm mt-2">High-Quality Image</h4>
+                            <p class="text-xs text-gray-600 mt-1">The final output is a clear, generated image (e.g., a realistic brain scan).</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="tab-agentic" role="tabpanel" class="hidden">
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-3xl font-bold text-[#118AB2] text-center mb-4">From Reactive to Proactive: The Agentic Workflow</h2>
+                <p class="max-w-4xl mx-auto text-lg leading-relaxed text-center mb-6">Agentic AI automates complex tasks by breaking them down into a series of steps. Instead of a clinician manually searching for information, the agent can be given a goal and will autonomously perform the necessary actions to present a synthesized, actionable summary. This process enhances efficiency and allows clinicians to focus on direct patient care.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+                    <div class="flex flex-col items-center bg-gray-50 p-4 rounded-lg shadow-sm">
+                        <span class="text-5xl mb-2">📥</span>
+                        <h4 class="font-semibold mb-1">Data Ingestion</h4>
+                        <p class="text-sm">The agent continuously monitors a patient's data from multiple sources: EHRs, lab results, and real-time vitals.</p>
+                    </div>
+                    <div class="flex flex-col items-center bg-gray-50 p-4 rounded-lg shadow-sm">
+                        <span class="text-5xl mb-2">🔍</span>
+                        <h4 class="font-semibold mb-1">Goal Triggering</h4>
+                        <p class="text-sm">An anomaly (e.g., an elevated heart rate) automatically triggers a specific goal, such as "Assess for patient risk of sepsis."</p>
+                    </div>
+                    <div class="flex flex-col items-center bg-gray-50 p-4 rounded-lg shadow-sm">
+                        <span class="text-5xl mb-2">🗺️</span>
+                        <h4 class="font-semibold mb-1">Reasoning & Planning</h4>
+                        <p class="text-sm">The agent autonomously plans a sequence of actions to meet the goal, such as pulling patient history, cross-referencing symptoms, and checking the latest medical research.</p>
+                    </div>
+                    <div class="flex flex-col items-center bg-gray-50 p-4 rounded-lg shadow-sm">
+                        <span class="text-5xl mb-2">➡️</span>
+                        <h4 class="font-semibold mb-1">Execution & Action</h4>
+                        <p class="text-sm">The agent synthesizes its findings, flags a high-risk patient, and proactively drafts a summary with suggested next steps for the clinician.</p>
+                    </div>
+                </div>
+            </section>
+            <section class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-2xl font-bold text-[#118AB2] text-center mb-4">Where Agents Have the Biggest Impact</h3>
+                <p class="max-w-3xl mx-auto text-center mb-6">Agentic AI can significantly enhance various aspects of clinical workflow. The radar chart below illustrates the potential for improvement across key performance areas, from diagnostic accuracy to patient personalization.</p>
+                <div class="chart-container h-72 md:h-80">
+                    <canvas id="performanceRadarChart"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <div id="tab-usecases" role="tabpanel" class="hidden">
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-3xl font-bold text-[#118AB2] text-center mb-4">Key Use Cases and Benefits</h2>
+                <p class="max-w-4xl mx-auto text-lg leading-relaxed text-center mb-6">Agentic AI's ability to automate complex, data-intensive tasks has a wide range of applications, providing significant benefits to both clinicians and patients.</p>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 my-8">
+                    <div class="p-6 bg-gray-50 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-2xl mb-2 text-[#073B4C] flex items-center gap-2">Automated Clinical Documentation ✍️</h3>
+                        <p class="text-sm text-gray-700 leading-relaxed mb-4">Agentic systems can listen to patient-doctor conversations (with consent) and automatically draft clinical notes, summaries, and after-visit notes. This significantly reduces the time doctors spend on administrative tasks, allowing for more direct patient engagement.</p>
+                        <div class="flex flex-col items-center text-center">
+                            <h4 class="font-semibold text-lg mb-2 text-[#118AB2]">The Old vs. New Workflow</h4>
+                            <div class="flex justify-around w-full max-w-md my-4">
+                                <div class="flex flex-col items-center">
+                                    <div class="text-3xl mb-2">🚶‍♂️</div>
+                                    <div class="text-sm font-bold text-red-600">Manual Entry</div>
+                                </div>
+                                <div class="text-4xl text-gray-400">➡️</div>
+                                <div class="flex flex-col items-center">
+                                    <div class="text-3xl mb-2">🤖</div>
+                                    <div class="text-sm font-bold text-green-600">AI Transcription</div>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 italic">Reduces manual documentation by up to 40%.</p>
+                        </div>
+                    </div>
+
+                    <div class="p-6 bg-gray-50 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-2xl mb-2 text-[#073B4C] flex items-center gap-2">Multimodal Analysis 🧠</h3>
+                        <p class="text-sm text-gray-700 leading-relaxed mb-4">Agentic AI can process diverse data types simultaneously. By synthesizing unstructured text from EHRs, images from radiology scans, and real-time data from wearables, it can provide a more comprehensive and accurate patient overview.</p>
+                        <div class="flex flex-col items-center text-center">
+                            <h4 class="font-semibold text-lg mb-2 text-[#118AB2]">Synthesizing Diverse Data</h4>
+                            <div class="flex items-center justify-center my-4">
+                                <div class="flex flex-col items-center mx-2">
+                                    <div class="text-3xl mb-2">📜</div>
+                                    <p class="text-xs font-bold text-blue-500">EHRs</p>
+                                </div>
+                                <div class="text-4xl text-gray-400">+</div>
+                                <div class="flex flex-col items-center mx-2">
+                                    <div class="text-3xl mb-2">🖼️</div>
+                                    <p class="text-xs font-bold text-blue-500">Radiology</p>
+                                </div>
+                                <div class="text-4xl text-gray-400">+</div>
+                                <div class="flex flex-col items-center mx-2">
+                                    <div class="text-3xl mb-2">⌚</div>
+                                    <p class="text-xs font-bold text-blue-500">Vitals</p>
+                                </div>
+                                <div class="text-4xl text-gray-400">➡️</div>
+                                <div class="flex flex-col items-center">
+                                    <div class="text-3xl mb-2">🔍</div>
+                                    <p class="text-xs font-bold text-green-600">Holistic View</p>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 italic">Leads to more accurate and timely diagnoses.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 my-8">
+                     <div class="p-6 bg-gray-50 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-2xl mb-2 text-[#073B4C] flex items-center gap-2">Precision Medicine & Diagnostics 🧬</h3>
+                        <p class="text-sm text-gray-700 leading-relaxed mb-4">By ingesting and cross-referencing vast amounts of data—including a patient's medical history, genetic profile, and real-time vitals—an agent can generate a highly **personalized treatment plan**. It can also assist in generating differential diagnoses for rare or complex conditions.</p>
+                        <div class="flex flex-col items-center text-center">
+                            <h4 class="font-semibold text-lg mb-2 text-[#118AB2]">The Path to Personalized Care</h4>
+                            <div class="grid grid-cols-3 gap-4 text-center my-4">
+                                <div class="flex flex-col items-center">
+                                    <div class="text-3xl mb-2">📋</div>
+                                    <p class="text-xs font-bold">Clinical Data</p>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <div class="text-3xl mb-2">🧬</div>
+                                    <p class="text-xs font-bold">Genomics</p>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <div class="text-3xl mb-2">🧪</div>
+                                    <p class="text-xs font-bold">Lab Results</p>
+                                </div>
+                            </div>
+                            <div class="text-4xl text-gray-400">➡️</div>
+                            <div class="flex flex-col items-center my-4">
+                                <div class="text-5xl mb-2">🧠</div>
+                                <p class="text-sm font-bold text-green-600">Agentic AI</p>
+                            </div>
+                            <div class="text-4xl text-gray-400">➡️</div>
+                            <div class="flex flex-col items-center my-4">
+                                <div class="text-3xl mb-2">💊</div>
+                                <p class="text-sm font-bold text-yellow-500">Tailored Plan</p>
+                            </div>
+                            <p class="text-xs text-gray-500 italic">Generates unique, data-driven treatment strategies.</p>
+                        </div>
+                    </div>
+
+                     <div class="p-6 bg-gray-50 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-2xl mb-2 text-[#073B4C] flex items-center gap-2">Accelerated Research & Drug Discovery 🔬</h3>
+                        <p class="text-sm text-gray-700 leading-relaxed mb-4">Agents can rapidly sift through massive genomic and chemical datasets to identify promising new drug candidates. This streamlines the research and development process, reducing the time and cost required to bring new treatments to market.</p>
+                         <div class="flex flex-col items-center text-center">
+                            <h4 class="font-semibold text-lg mb-2 text-[#118AB2]">Reducing the Drug Discovery Timeline</h4>
+                            <div class="chart-container h-48 my-4">
+                                <canvas id="drugDiscoveryChart"></canvas>
+                            </div>
+                            <p class="text-xs text-gray-500 italic">Simulated data illustrating the potential time reduction in drug discovery.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 my-8">
+                     <div class="p-6 bg-gray-50 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-2xl mb-2 text-[#073B4C] flex items-center gap-2">Operational Efficiency ⏰</h3>
+                        <p class="text-sm text-gray-700 leading-relaxed mb-4">Agentic AI can take on a wide range of administrative tasks. From automating appointment scheduling and billing to optimizing hospital bed allocation and supply chain logistics, these systems free up valuable resources and reduce costly delays.</p>
+                        <div class="flex flex-col items-center text-center">
+                            <h4 class="font-semibold text-lg mb-2 text-[#118AB2]">Time Saved by AI Automation</h4>
+                            <div class="chart-container h-64 my-4">
+                                <canvas id="efficiencyChart"></canvas>
+                            </div>
+                            <p class="text-xs text-gray-500 italic">A typical day for a hospital administrator, before and after AI integration.</p>
+                        </div>
+                    </div>
+
+                    <div class="p-6 bg-gray-50 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-2xl mb-2 text-[#073B4C] flex items-center gap-2">Proactive Patient Monitoring 🛡️</h3>
+                        <p class="text-sm text-gray-700 leading-relaxed mb-4">Moving from "sick care" to "well care," agents can continuously monitor a patient's health data from wearables or remote sensors. By identifying subtle changes or anomalies, the system can proactively alert a clinician, allowing for a timely intervention before a minor issue becomes a major health crisis.</p>
+                         <div class="flex flex-col items-center text-center">
+                            <h4 class="font-semibold text-lg mb-2 text-[#118AB2]">Proactive Monitoring Loop</h4>
+                             <div class="relative w-full max-w-lg mx-auto my-4">
+                                <div class="flex justify-between items-center text-center">
+                                    <div class="flex-1 flex flex-col items-center">
+                                        <div class="text-4xl text-blue-500">⌚</div>
+                                        <p class="text-xs font-semibold mt-1">Wearable Data</p>
+                                    </div>
+                                    <div class="text-5xl text-gray-300 mx-4">➡️</div>
+                                    <div class="flex-1 flex flex-col items-center">
+                                        <div class="text-4xl text-green-500">🧠</div>
+                                        <p class="text-xs font-semibold mt-1">AI Agent Analysis</p>
+                                    </div>
+                                    <div class="text-5xl text-gray-300 mx-4">➡️</div>
+                                    <div class="flex-1 flex flex-col items-center">
+                                        <div class="text-4xl text-yellow-500">🚨</div>
+                                        <p class="text-xs font-semibold mt-1">Proactive Alert</p>
+                                    </div>
+                                </div>
+                                <div class="text-center mt-4">
+                                    <div class="text-4xl text-gray-300 rotate-90 mx-auto">⬇️</div>
+                                    <div class="flex flex-col items-center mt-2">
+                                        <div class="text-4xl text-red-500">👩‍⚕️</div>
+                                        <p class="text-xs font-semibold mt-1">Timely Intervention</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 italic">This continuous cycle shifts care from reactive to preventive.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        <div id="tab-trends" role="tabpanel" class="hidden">
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-3xl font-bold text-[#118AB2] text-center mb-4">The Rising Tide of AI in Healthcare</h2>
+                <p class="max-w-4xl mx-auto text-lg leading-relaxed text-center mb-6">The global market for AI in healthcare is experiencing explosive growth, driven by increasing demand for efficiency and personalized care. This section highlights key market statistics and projections that underscore the rapid adoption of these technologies.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="p-4 rounded-lg shadow-sm bg-gray-50 text-center">
+                        <p class="text-sm font-bold text-[#118AB2] mb-1">Global Market Size (2024)</p>
+                        <p class="text-5xl font-extrabold text-[#06D6A0]">$29.01B</p>
+                    </div>
+                    <div class="p-4 rounded-lg shadow-sm bg-gray-50 text-center">
+                        <p class="text-sm font-bold text-[#118AB2] mb-1">Projected CAGR (2025-2032)</p>
+                        <p class="text-5xl font-extrabold text-[#FFD166]">44.0%</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h3 class="text-2xl font-bold text-[#118AB2] text-center mb-4">Forecasted Market Growth</h3>
+                <p class="max-w-3xl mx-auto text-center mb-6">The market is expected to grow from $39.25 billion in 2025 to over $500 billion by 2032, a testament to its transformative potential. The line chart below visualizes this dramatic growth curve.</p>
+                <div class="chart-container h-72 md:h-80">
+                    <canvas id="marketGrowthChart"></canvas>
+                </div>
+            </section>
+
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h3 class="text-2xl font-bold text-[#118AB2] text-center mb-4">Adoption by Application</h3>
+                <p class="max-w-3xl mx-auto text-center mb-6">AI is being integrated across various clinical and administrative functions. The bar chart shows where the technology is making the biggest inroads, with robot-assisted surgery currently holding the largest market share.</p>
+                <div class="chart-container h-72 md:h-80">
+                    <canvas id="adoptionChart"></canvas>
+                </div>
+            </section>
+        </div>
+        
+        <div id="tab-challenges" role="tabpanel" class="hidden">
+            <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-3xl font-bold text-[#118AB2] text-center mb-4">Ethical Considerations & Future Outlook</h2>
+                <p class="max-w-4xl mx-auto text-lg leading-relaxed text-center mb-6">While the potential is vast, the implementation of Agentic AI requires careful consideration of critical challenges. Addressing these issues is essential for responsible development and widespread trust in the technology.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
+                        <div class="text-4xl mb-2 text-[#FF6B6B]">⚖️</div>
+                        <h3 class="font-bold text-xl mb-1 text-[#073B4C]">Accountability & Liability</h3>
+                        <p class="text-sm text-gray-700">A core question is who is responsible when an AI system makes an error. Establishing clear frameworks for liability is crucial to protect patients and ensure the healthcare system remains accountable.</p>
+                    </div>
+                     <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
+                        <div class="text-4xl mb-2 text-[#FFD166]">🤝</div>
+                        <h3 class="font-bold text-xl mb-1 text-[#073B4C]">Transparency & Trust</h3>
+                        <p class="text-sm text-gray-700">AI systems are often "black boxes" where the reasoning behind a decision is unclear. Building trust requires transparency, allowing clinicians to understand how a recommendation was reached and providing them with the final say in all decisions.</p>
+                    </div>
+                     <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
+                        <div class="text-4xl mb-2 text-[#06D6A0]">🔐</div>
+                        <h3 class="font-bold text-xl mb-1 text-[#073B4C]">Privacy & Security</h3>
+                        <p class="text-sm text-gray-700">Agentic AI requires access to massive amounts of sensitive data. Maintaining strict data privacy and security protocols is paramount to prevent breaches and maintain patient confidentiality.</p>
+                    </div>
+                </div>
+                <div class="mt-8 text-center">
+                    <h3 class="text-2xl font-bold text-[#118AB2] mb-4">The Future is Proactive & Human-Centric</h3>
+                    <p class="max-w-4xl mx-auto text-lg leading-relaxed">Agentic AI will continue to evolve, shifting healthcare from a reactive, "sick care" model to a proactive, **"well care" model**. By continuously monitoring patient data and identifying risks early, these systems will empower clinicians to intervene before a condition becomes critical. The goal is not to replace human judgment, but to augment it, allowing healthcare professionals to focus on the human connection that is at the heart of medicine.</p>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <footer class="text-center py-6 bg-[#073B4C] text-white">
+        <p>Infographic by Canvas Infographics</p>
+    </footer>
+
+    <script>
+        const charts = {};
+        const chartColors = {
+            blue: '#118AB2',
+            green: '#06D6A0',
+            yellow: '#FFD166',
+            red: '#FF6B6B',
+            darkBlue: '#073B4C',
+            gray: '#A9A9A9'
+        };
+
+        const tooltipTitleCallback = (tooltipItems) => {
+            const item = tooltipItems[0];
+            let label = item.chart.data.labels[item.dataIndex];
+            if (Array.isArray(label)) {
+                return label.join(' ');
+            } else {
+                return label;
+            }
+        };
+
+        function wrapLabel(label) {
+            const maxLength = 16;
+            if (label.length <= maxLength) {
+                return label;
+            }
+            const words = label.split(' ');
+            let lines = [];
+            let currentLine = '';
+            for (const word of words) {
+                if ((currentLine + ' ' + word).trim().length > maxLength) {
+                    lines.push(currentLine.trim());
+                    currentLine = word;
+                } else {
+                    currentLine = (currentLine + ' ' + word).trim();
+                }
+            }
+            if (currentLine) {
+                lines.push(currentLine.trim());
+            }
+            return lines;
+        }
+
+        const tabs = document.querySelectorAll('.tab-btn');
+        const tabPanels = document.querySelectorAll('[role="tabpanel"]');
+        const techTabs = document.querySelectorAll('.tech-tab-btn');
+        const techTabContents = document.querySelectorAll('.tech-tab-content');
+
+        function showTab(tabId) {
+            tabs.forEach(tab => tab.classList.remove('active'));
+            tabPanels.forEach(panel => panel.classList.add('hidden'));
+            const activeTab = document.querySelector(`[aria-controls="${tabId}"]`);
+            activeTab.classList.add('active');
+            document.getElementById(tabId).classList.remove('hidden');
+        }
+
+        function showTechTab(tabId) {
+            techTabs.forEach(tab => tab.classList.remove('active'));
+            techTabContents.forEach(content => content.classList.add('hidden'));
+            const activeTab = document.querySelector(`.tech-tab-btn[aria-controls="${tabId}"]`);
+            if (activeTab) activeTab.classList.add('active');
+            document.getElementById(tabId).classList.remove('hidden');
+        }
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('aria-controls');
+                showTab(tabId);
+                if (tabId === 'tab-tech') {
+                    showTechTab('tech-tab-1');
+                }
+            });
+        });
+
+        techTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('aria-controls');
+                showTechTab(tabId);
+            });
+        });
+
+        function createCharts() {
+            if (!charts.aiTypesChart) {
+                const aiTypesCtx = document.getElementById('aiTypesChart').getContext('2d');
+                charts.aiTypesChart = new Chart(aiTypesCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Predictive Machine Learning', 'Natural Language Processing (LLMs)', 'Computer Vision (Imaging)', 'Rule-Based Systems'],
+                        datasets: [{
+                            label: 'AI Application Share',
+                            data: [45, 35, 15, 5],
+                            backgroundColor: [chartColors.blue, chartColors.green, chartColors.yellow, chartColors.red],
+                            borderColor: '#FFFFFF',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 20,
+                                    padding: 10
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: tooltipTitleCallback
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            if (!charts.performanceRadarChart) {
+                const performanceRadarCtx = document.getElementById('performanceRadarChart').getContext('2d');
+                charts.performanceRadarChart = new Chart(performanceRadarCtx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['Diagnostic Accuracy', 'Clinician Efficiency', 'Patient Outcomes', 'Cost Reduction', 'Personalization'],
+                        datasets: [{
+                            label: 'Improvement with Agentic AI',
+                            data: [85, 75, 80, 60, 90],
+                            fill: true,
+                            backgroundColor: 'rgba(17, 138, 178, 0.2)',
+                            borderColor: chartColors.blue,
+                            pointBackgroundColor: chartColors.blue,
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: chartColors.blue
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                angleLines: { display: true },
+                                suggestedMin: 0,
+                                suggestedMax: 100,
+                                ticks: { backdropColor: 'transparent', maxTicksLimit: 6 }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { title: tooltipTitleCallback } }
+                        }
+                    }
+                });
+            }
+
+            if (!charts.marketGrowthChart) {
+                const marketGrowthCtx = document.getElementById('marketGrowthChart').getContext('2d');
+                charts.marketGrowthChart = new Chart(marketGrowthCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['2025', '2026', '2027', '2028', '2029', '2030', '2031', '2032'],
+                        datasets: [{
+                            label: 'Market Size ($B)',
+                            data: [39.25, 56.5, 81.3, 117.1, 168.7, 242.9, 349.8, 504.17],
+                            fill: true,
+                            backgroundColor: 'rgba(6, 214, 160, 0.2)',
+                            borderColor: chartColors.green,
+                            pointBackgroundColor: chartColors.green,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Market Value in Billions ($)'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: { position: 'top' },
+                            tooltip: { callbacks: { title: tooltipTitleCallback } }
+                        }
+                    }
+                });
+            }
+
+            if (!charts.adoptionChart) {
+                const adoptionCtx = document.getElementById('adoptionChart').getContext('2d');
+                charts.adoptionChart = new Chart(adoptionCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Robot-Assisted Surgery', wrapLabel('Virtual Nursing Assistant'), wrapLabel('Administrative Workflow Assistance'), 'Clinical Trials', 'Diagnostics'],
+                        datasets: [{
+                            label: 'Market Share (%)',
+                            data: [35, 20, 15, 12, 18],
+                            backgroundColor: [chartColors.blue, chartColors.green, chartColors.yellow, chartColors.red, chartColors.darkBlue]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                max: 40,
+                                title: { display: true, text: 'Market Share (%)' }
+                            },
+                            y: {
+                                grid: { display: false }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { title: tooltipTitleCallback } }
+                        }
+                    }
+                });
+            }
+
+            if (!charts.drugDiscoveryChart) {
+                const drugDiscoveryCtx = document.getElementById('drugDiscoveryChart').getContext('2d');
+                charts.drugDiscoveryChart = new Chart(drugDiscoveryCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Traditional Process', 'AI-Augmented Process'],
+                        datasets: [{
+                            label: 'Years to Market',
+                            data: [12, 5],
+                            backgroundColor: [chartColors.darkBlue, chartColors.green]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                max: 15,
+                                title: { display: true, text: 'Years' }
+                            },
+                            y: {
+                                grid: { display: false }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { title: tooltipTitleCallback } }
+                        }
+                    }
+                });
+            }
+
+            if (!charts.efficiencyChart) {
+                const efficiencyCtx = document.getElementById('efficiencyChart').getContext('2d');
+                charts.efficiencyChart = new Chart(efficiencyCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Administrative Tasks', 'Patient Care'],
+                        datasets: [{
+                            label: 'Time Allocation (%)',
+                            data: [40, 60],
+                            backgroundColor: [chartColors.red, chartColors.blue],
+                            borderColor: '#FFFFFF',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 20,
+                                    padding: 10
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: tooltipTitleCallback
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            showTab('tab-home');
+            createCharts();
+            techTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabId = tab.getAttribute('aria-controls');
+                    showTechTab(tabId);
+                });
+            });
+            showTechTab('tech-tab-1');
+        });
+    </script>
+</body>
+</html>
